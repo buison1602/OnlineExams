@@ -78,10 +78,13 @@ public class Signup extends AppCompatActivity {
                         });
                         return;
                     }
+
                     auth.createUserWithEmailAndPassword(em, pass)
                             .addOnCompleteListener(Signup.this, (OnCompleteListener<AuthResult>) task -> {
                         if (task.isSuccessful()) {
                             FirebaseUser user = auth.getCurrentUser();
+                            // Tạo đường dẫn trong Firebase Database đến:
+                            // Users/{userUID} – mỗi người dùng được lưu dưới một UID riêng biệt.
                             DatabaseReference ref = database.child("Users").child(user.getUid());
                             ref.child("First Name").setValue(firstName);
                             ref.child("Last Name").setValue(lastName);
