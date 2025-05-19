@@ -10,18 +10,30 @@ import android.widget.CompoundButton;
 import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 public class Exam extends AppCompatActivity {
 
     private Question[] data;
-    private String QuizID;
+    private String quizID;
+    private String uid;
+    private int oldTotalPoints = 0;
+    private int oldTotalQuestions = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,10 +47,59 @@ public class Exam extends AppCompatActivity {
         });
 
         // -------------------------------------------------------------------------------------
+
+        quizID = getIntent().getStringExtra("Quiz ID");
         ListView listview = findViewById(R.id.listview);
         Button submit = findViewById(R.id.submit);
         TextView title = findViewById(R.id.title);
 
+        uid = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+        DatabaseReference database = FirebaseDatabase.getInstance().getReference();
+        ValueEventListener listener = new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                if (snapshot.child("Quizzes").hasChild(quizID)) {
+                    DataSnapshot ref = snapshot.child("Quizzes").child(quizID);
+                    int num = Integer.parseInt(ref.child("Total Questions").getValue().toString());
+                    data = new Question[num];
+
+                    for (int i = 0; i < num; i++) {
+                        DataSnapshot qRef = ref.child("Questions").child(String.valueOf(i));
+                        Question question = new Question();
+                        question.setQuestion(qRef.child("Question").getValue().toString());
+                        question.setOption1(qRef.child("Option 1").getValue().toString());
+                        question.setOption2(qRef.child("Option 2").getValue().toString());
+                        question.setOption3(qRef.child("Option 3").getValue().toString());
+                        question.setOption4(qRef.child("Option 4").getValue().toString());
+
+                        int ans = Integer.parseInt(qRef.child("Ans").getValue().toString());
+                        question.setCorrectAnswer(ans);
+                        data[i] = question;
+                    }
+
+                    ListAdapter listAdapter = new ListAdapter(data);
+                    listview.setAdapter(listAdapter);
+                    DataSnapshot ref2 = snapshot.child("Users").child(uid);
+
+                    if (ref2.hasChild("Total Points")) {
+                        oldTotalPoints = Integer.parseInt(ref2.child("Total Points").getValue().toString());
+                    }
+                    if (ref2.hasChild("Total Questions")) {
+                        oldTotalQuestions= Integer.parseInt(ref2.child("Total Questions").getValue().toString());
+                    }
+                } else {
+                    finish();
+                }
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError error) {
+                Toast.makeText(Exam.this, "Can't connect", Toast.LENGTH_SHORT).show();
+            }
+        };
+
+        database.addValueEventListener(listener);
     }
 
     public class ListAdapter extends BaseAdapter {

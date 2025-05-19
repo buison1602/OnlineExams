@@ -99,6 +99,38 @@ public class Home extends AppCompatActivity {
             finish();
         });
 
+        createQuiz.setOnClickListener(view -> {
+            if (quiz_title.getText().toString().equals("")) {
+                quiz_title.setError("Quiz title cannot be empty");
+                return;
+            }
+
+            Intent i = new Intent(Home.this, ExamEditor.class);
+            i.putExtra("Quiz Title", quiz_title.getText().toString());
+            quiz_title.setText("");
+            startActivity(i);
+        });
+
+        startQuiz.setOnClickListener(view -> {
+            if (start_quiz_id.getText().toString().equals("")) {
+                start_quiz_id.setError("Quiz title cannot be empty");
+            }
+            Intent i = new Intent(Home.this, Exam.class);
+            i.putExtra("Quiz ID", start_quiz_id.getText().toString());
+            start_quiz_id.setText("");
+            startActivity(i);
+        });
+
+
+
+
+
+
+
+
+
+
+
 
     }
 }
