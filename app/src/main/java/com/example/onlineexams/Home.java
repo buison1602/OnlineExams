@@ -62,7 +62,9 @@ public class Home extends AppCompatActivity {
         EditText start_quiz_id = findViewById(R.id.start_quiz_id);
         ImageView signout = findViewById(R.id.signout);
 
+        // ValueEventListener là một listener dùng để lắng nghe mọi thay đổi của dữ liệu trong node được theo dõi.
         ValueEventListener listener = new ValueEventListener() {
+            // onDataChange(...) được gọi mỗi khi dữ liệu tại node thay đổi (hoặc lần đầu khi đọc).
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
                 DataSnapshot usersRef = snapshot.child("Users").child(userUID);
@@ -77,7 +79,7 @@ public class Home extends AppCompatActivity {
                 if (usersRef.hasChild("Total Questions")) {
                     String totalQuestions = usersRef.child("Total Questions").getValue().toString();
                     int questions = Integer.parseInt(totalQuestions);
-                    total_questions.setText(String.format("%03d", totalQuestions));
+                    total_questions.setText(String.format("%03d", questions));
                 }
 
                 name.setText("Welcome " + firstName + "!");
@@ -90,6 +92,8 @@ public class Home extends AppCompatActivity {
             }
         };
 
+        // Lệnh này nói với Firebase: “Tôi muốn lắng nghe mọi thay đổi trong toàn bộ cơ sở dữ liệu.”
+        //Khi bất kỳ phần nào của Realtime Database thay đổi, hàm onDataChange(...) sẽ được gọi lại.
         database.addValueEventListener(listener);
 
         signout.setOnClickListener(view -> {
@@ -121,14 +125,17 @@ public class Home extends AppCompatActivity {
             startActivity(i);
         });
 
+        solvedQuizzes.setOnClickListener(view -> {
+            Intent i = new Intent(Home.this, ListQuizzes.class);
+            i.putExtra("Operation", "List Solved Quizzes");
+            startActivity(i);
+        });
 
-
-
-
-
-
-
-
+        your_quizzes.setOnClickListener(view -> {
+            Intent i = new Intent(Home.this, ListQuizzes.class);
+            i.putExtra("Operation", "List Created Quizzes");
+            startActivity(i);
+        });
 
 
 

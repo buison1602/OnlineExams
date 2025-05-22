@@ -114,14 +114,5 @@ public class Signup extends AppCompatActivity {
             startActivity(i);
             finish();
         });
-
-
-
-
-
-
-
-
-
     }
 }

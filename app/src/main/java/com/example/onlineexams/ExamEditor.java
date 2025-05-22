@@ -45,6 +45,7 @@ public class ExamEditor extends AppCompatActivity {
     private RecyclerView listview;
     private int quizID;
 
+// 1. ExamEditor khởi tạo (onCreate)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -56,18 +57,23 @@ public class ExamEditor extends AppCompatActivity {
             return insets;
         });
 
+        // -----------------------------------------------------------------------------------------
+
         Bundle b = getIntent().getExtras();
-        String quizTitle = b.getString("Quiz TItle");
+        String quizTitle = b.getString("Quiz Title");
 
         TextView title = findViewById(R.id.title);
         title.setText(quizTitle);
 
         Button submit = findViewById(R.id.submit);
 
+    // Kết nối Firebase Realtime Database → đọc Quizzes/Last ID để sinh quizID mới.
+    // Nếu chưa có, bắt đầu từ 100000
         DatabaseReference database = FirebaseDatabase.getInstance().getReference();
         ValueEventListener listener = new ValueEventListener() {
             @Override
             public void onDataChange(@NonNull DataSnapshot snapshot) {
+                // Đoạn này chỉ để tạo ID :)
                 if (snapshot.child("Quizzes").hasChild("Last ID")) {
                     String lID = snapshot.child("Quizzes").child("Last ID").getValue().toString();
                     quizID = Integer.parseInt(lID) + 1;
@@ -84,6 +90,7 @@ public class ExamEditor extends AppCompatActivity {
 
         database.addValueEventListener(listener);
 
+    // Tạo danh sách câu hỏi data (ban đầu 1 câu rỗng) và gắn vào RecyclerView qua CustomAdapter.
         data = new ArrayList<>();
         data.add(new Question());
 
@@ -92,31 +99,38 @@ public class ExamEditor extends AppCompatActivity {
         CustomAdapter customAdapter = new CustomAdapter(data);
         listview.setAdapter(customAdapter);
 
+    // Gắn ItemTouchHelper để người dùng kéo-thả đổi thứ tự câu hỏi.
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(callback);
         itemTouchHelper.attachToRecyclerView(listview);
 
+
         submit.setOnClickListener(view -> {
             DatabaseReference ref = database.child("Quizzes");
+            // 1. Lưu Last ID mới.
             ref.child("Last ID").setValue(quizID);
+
+            // 2. Ghi tiêu đề, số lượng câu hỏi và toàn bộ chi tiết từng câu (Question, Option 1-4, Ans).
             ref.child(String.valueOf(quizID)).child("Title").setValue(quizTitle);
             ref.child(String.valueOf(quizID)).child("Total Questions").setValue(data.size());
             DatabaseReference qRef = ref.child(String.valueOf(quizID)).child("Questions");
 
             for (int i = 0; i < data.size(); i++) {
                 String p = String.valueOf(i);
-                qRef.child(String.valueOf(i)).child("Question").setValue(data.get(i).getQuestion());
-                qRef.child(String.valueOf(i)).child("Option 1").setValue(data.get(i).getOption1());
-                qRef.child(String.valueOf(i)).child("Option 2").setValue(data.get(i).getOption2());
-                qRef.child(String.valueOf(i)).child("Option 3").setValue(data.get(i).getOption3());
-                qRef.child(String.valueOf(i)).child("Option 4").setValue(data.get(i).getOption4());
-                qRef.child(String.valueOf(i)).child("Ans").setValue(data.get(i).getCorrectAnswer());
+                qRef.child(p).child("Question").setValue(data.get(i).getQuestion());
+                qRef.child(p).child("Option 1").setValue(data.get(i).getOption1());
+                qRef.child(p).child("Option 2").setValue(data.get(i).getOption2());
+                qRef.child(p).child("Option 3").setValue(data.get(i).getOption3());
+                qRef.child(p).child("Option 4").setValue(data.get(i).getOption4());
+                qRef.child(p).child("Ans").setValue(data.get(i).getCorrectAnswer());
             }
 
+            // 3. Thêm mã bài thi vào nút Quizzes Created của người tạo (uid hiện tại).
             database.child("Users").child(
                     FirebaseAuth.getInstance().getCurrentUser().getUid())
                     .child("Quizzes Created").child(String.valueOf(quizID))
                     .setValue("");
 
+            // 4. Sao chép quizID vào clipboard và đóng activity.
             ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
             ClipData clip = ClipData.newPlainText("Quiz ID", String.valueOf(quizID));
             clipboard.setPrimaryClip(clip);
@@ -127,12 +141,17 @@ public class ExamEditor extends AppCompatActivity {
         });
     }
 
+
+// 3. Kéo-thả sắp xếp
+    // Gắn ItemTouchHelper để người dùng kéo-thả đổi thứ tự câu hỏi
+    // ItemTouchHelper.SimpleCallback cho phép di chuyển UP/DOWN.
     ItemTouchHelper.SimpleCallback callback = new ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP | ItemTouchHelper.DOWN, 0) {
         @Override
         public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder dragged, @NonNull RecyclerView.ViewHolder target) {
             int position_dragged = dragged.getAdapterPosition();
             int position_target = target.getAdapterPosition();
 
+            // Khi kéo hoàn tất: Collections.swap(data, draggedPos, targetPos) + notifyItemMoved
             Collections.swap(data, position_dragged, position_target);
             listview.getAdapter().notifyItemMoved(position_dragged, position_target);
 
@@ -143,6 +162,8 @@ public class ExamEditor extends AppCompatActivity {
         public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {}
     };
 
+
+// 2. CustomAdapter quản lý mỗi item (layout question_edit)
     public static class CustomAdapter extends RecyclerView.Adapter<ExamEditor.CustomAdapter.ViewHolder> {
 
         public static class ViewHolder extends RecyclerView.ViewHolder {
@@ -224,8 +245,7 @@ public class ExamEditor extends AppCompatActivity {
             }
         }
 
-        public CustomAdapter (ArrayList<Question> data) {
-        }
+        public CustomAdapter (ArrayList<Question> data) {}
 
 
         @NonNull
@@ -241,7 +261,7 @@ public class ExamEditor extends AppCompatActivity {
         public void onBindViewHolder(@NonNull ViewHolder holder, @SuppressLint("RecyclerView") int position) {
             holder.setIsRecyclable(false);
 
-            holder.getQuestion().setText(data.get(position).getQuestion());
+            // Đổ dữ liệu từ data vào view.
             holder.getOption1et().setText(data.get(position).getOption1());
             holder.getOption2et().setText(data.get(position).getOption2());
             holder.getOption3et().setText(data.get(position).getOption3());
@@ -262,6 +282,7 @@ public class ExamEditor extends AppCompatActivity {
                     break;
             }
 
+            // TextWatcher cập nhật ngược vào data mỗi khi người dùng gõ.
             holder.getQuestion().addTextChangedListener(new TextWatcher() {
                 @Override
                 public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
@@ -327,6 +348,7 @@ public class ExamEditor extends AppCompatActivity {
                 }
             });
 
+            // OnCheckedChangeListener ghi đáp án đúng (1-4) vào data.
             holder.getRadio_group().setOnCheckedChangeListener((radioGroup, i) -> {
                 if (holder.getOption1rb().isChecked()) data.get(position).setCorrectAnswer(1);
                 if (holder.getOption2rb().isChecked()) data.get(position).setCorrectAnswer(2);
@@ -334,6 +356,7 @@ public class ExamEditor extends AppCompatActivity {
                 if (holder.getOption4rb().isChecked()) data.get(position).setCorrectAnswer(4);
             });
 
+            // Với item cuối cùng, hiển thị nút new_question → click sẽ data.add(new Question()) rồi notifyDataSetChanged().
             if (position == (data.size() - 1)) {
                 holder.getNew_question().setVisibility(View.VISIBLE);
 
@@ -342,7 +365,6 @@ public class ExamEditor extends AppCompatActivity {
                     notifyDataSetChanged();
                 });
             }
-
         }
 
         @Override
